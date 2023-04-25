@@ -15,7 +15,7 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Main")
-        self.setGeometry(300, 300, 300, 300)
+        self.setGeometry(700, 400, 300, 300)
         self.label = QLabel("Вы знаете куда хотите отправиться\n \tв путешествие?", self)
         self.label.move(10, 10)
         self.label.resize(300, 50)
@@ -48,7 +48,7 @@ class Allcountry(QMainWindow):
     def __init__(self, mainwindow):
         super().__init__()
         self.setWindowTitle('All list country')
-        self.setGeometry(300, 300, 680, 680)
+        self.setGeometry(600, 300, 680, 680)
 
         self.gridLayout = QGridLayout(self)
         self.scrollArea = QScrollArea(self)
@@ -90,8 +90,9 @@ class Allcountry(QMainWindow):
     def go_to_info(self):
         sender: QPushButton = self.sender()
         index = str(self.buttons.index(sender) + 1) # по индексу дальше будем понимать, что за страна
-        self.inform = InfoWidget(index)
+        self.inform = InfoWidget(index, self)
         self.inform.show()
+        self.hide()
 
     def go_to_no_country(self):
         self.no_coun.show()
@@ -106,7 +107,7 @@ class ChoiseNoCountry(QWidget):
     def __init__(self, mainwidget):
         super().__init__()
         self.setWindowTitle('Choise no country')
-        self.setGeometry(300, 300, 320, 200)
+        self.setGeometry(700, 480, 320, 200)
         self.label = QLabel("Как вы хотите узнать выбрать страну?", self)
         self.label.move(10, 10)
         self.label.resize(300, 30)
@@ -117,13 +118,13 @@ class ChoiseNoCountry(QWidget):
         self.one_var = QPushButton("Таблица стран по посещаемости", self)
         self.one_var.move(30, 40)
         self.one_var.resize(250, 40)
-        self.one_var.clicked.connect(tablecountry.show)
+        self.one_var.clicked.connect(self.view_table)
         self.one_var.setFont(QFont("Comic Sans MS", 11))
 
         self.three_var = QPushButton("Рандомный выбор страны", self)
         self.three_var.move(30, 90)
         self.three_var.resize(250, 40)
-        self.three_var.clicked.connect(randcountry.show)
+        self.three_var.clicked.connect(self.go_to_random)
         self.three_var.setFont(QFont("Comic Sans MS", 11))
 
         self.back = QPushButton("Вернуться назад", self)
@@ -136,16 +137,30 @@ class ChoiseNoCountry(QWidget):
         self.mainwindow.show()
         self.hide()
 
+    def view_table(self):
+        self.table = TableWindow(self, self.mainwindow)
+        self.table.show()
+        self.hide()
+
+    def go_to_random(self):
+        self.random = RandomWidget(self)
+        self.random.show()
+        self.hide()
+
+
 
 class TableWindow(QWidget):
-    def __init__(self):
+    def __init__(self, choise_no_country, allcountry):
         super().__init__()
         self.setWindowTitle('Table')
-        self.setGeometry(300, 300, 400, 490)
+        self.setGeometry(650, 400, 400, 540)
         self.table_w = QTableView(self)
         self.table_w.move(20, 20)
         self.table_w.resize(370, 400)
         self.table_w.pressed.connect(self.rowselect)
+
+        self.choise_no_country = choise_no_country
+        self.allcountry = allcountry
 
         # отображение дб через model
         db = QSqlDatabase.addDatabase("QSQLITE")
@@ -165,30 +180,41 @@ class TableWindow(QWidget):
         self.but_more.setFont(QFont("Comic Sans MS", 13))
 
         self.label = QLabel(self)
-        self.label.move(20, 460)
+        self.label.move(20, 500)
         self.label.resize(370, 30)
         self.label.setFont(QFont("Comic Sans MS", 13))
+
+        self.back = QPushButton("Вернуться назад", self)
+        self.back.move(20, 470)
+        self.back.resize(370, 30)
+        self.back.clicked.connect(self.go_back)
+        self.back.setFont(QFont("Comic Sans MS", 11))
 
     def rowselect(self, index):
         con = sqlite3.connect("project_country")
         cur = con.cursor()
         self.index = index.sibling(index.row(), 0).data()
-        self.inform = InfoWidget(str(self.index))
+        self.inform = InfoWidget(str(self.index), self.allcountry)
         name_coun = cur.execute(f"""SELECT * FROM country WHERE id = {str(self.index)}""").fetchall()[0][1]
         self.label.setText(f"Вы нажали на: {name_coun}")
 
     def go_to_info(self):
         try:
             self.inform.show()
+            self.hide()
         except AttributeError:
             self.label.setText("Пожалуйста, нажмите на страну")
 
+    def go_back(self):
+        self.choise_no_country.show()
+        self.hide()
+
 
 class RandomWidget(QWidget):
-    def __init__(self):
+    def __init__(self, choise_no_country):
         super().__init__()
         self.setWindowTitle('Random country')
-        self.setGeometry(300, 300, 300, 250)
+        self.setGeometry(700, 480, 300, 270)
         self.but_coun = QPushButton(self)
         self.but_coun.move(70, 30)
         self.but_coun.resize(150, 100)
@@ -197,11 +223,21 @@ class RandomWidget(QWidget):
         self.but_coun.setStyleSheet(f"background-image : url(flags/im_{self.random}.png);")
         self.but_coun.clicked.connect(self.go_to_info)
 
+        self.choise_no_country = choise_no_country
+
         self.but = QPushButton(self)
         self.but.resize(150, 75)
         self.but.move(70, 140)
         self.but.setStyleSheet("background-image : url(image/go.png);")
         self.but.clicked.connect(self.view)
+
+        self.back = QPushButton("BACK", self)
+        self.back.resize(150, 40)
+        self.back.move(70, 220)
+        self.back.setFont(QFont("Comic Sans MS", 13))
+        self.back.clicked.connect(self.go_back)
+
+
 
     def view(self):
         self.random = randint(1, 36)
@@ -209,20 +245,27 @@ class RandomWidget(QWidget):
 
     def go_to_info(self):
         index = self.random
-        self.inform = InfoWidget(index)
+        self.inform = InfoWidget(index, self)
         self.inform.show()
+
+    def go_back(self):
+        self.choise_no_country.show()
+        self.hide()
+
+
 
 
 class InfoWidget(QWidget):
-    def __init__(self, index):
+    def __init__(self, index, allcountry):
         super().__init__()
         self.setWindowTitle('Info country')
-        self.setGeometry(300, 300, 520, 400)
+        self.setGeometry(600, 480, 520, 450)
         self.name = QLabel(self)
         self.name.move(20, 10)
         self.name.resize(180, 60)
 
         self.buy = BuyTicket(index)
+        self.allcountry = allcountry
 
         # получение названия страны из базы данных
         con = sqlite3.connect("project_country")
@@ -265,9 +308,21 @@ class InfoWidget(QWidget):
         self.set_info_text(index)
         self.scrollArea.setWidget(self.plan_text)
 
+        self.back = QPushButton("Вернуться назад", self)
+        self.back.move(20, 400)
+        self.back.resize(480, 40)
+        self.back.clicked.connect(self.allcountry_show)
+        self.back.setFont(QFont("Comic Sans MS", 11))
+
     def set_info_text(self, index):
         with open(f"info_coun/info_{index}.txt", encoding="utf8") as file:
             self.plan_text.setPlainText(file.read())
+
+    def allcountry_show(self):
+        self.allcountry.show()
+        self.hide()
+
+
 
 
 def write_to_file(data, filename):
@@ -302,7 +357,7 @@ class NoMyCountryWindow(QWidget):
     def __init__(self, allcountry):
         super().__init__()
         self.setWindowTitle('No Country')
-        self.setGeometry(300, 300, 400, 300)
+        self.setGeometry(650, 500, 400, 300)
         self.label = QLabel("Напишите название страны:", self)
         self.label.move(10, 10)
         self.label.resize(300, 20)
@@ -364,7 +419,7 @@ class NoMyCountryWindow(QWidget):
                 con.commit()
 
     def go_to_info(self):
-        self.inform = InfoWidget(self.x[0][0])
+        self.inform = InfoWidget(self.x[0][0], self.allcountry)
         self.inform.show()
 
     def back_to_allcountry(self):
@@ -372,11 +427,12 @@ class NoMyCountryWindow(QWidget):
         self.hide()
 
 
+
 class BuyTicket(QWidget):
     def __init__(self, index):
         super().__init__()
         self.setWindowTitle('Buy Ticket')
-        self.setGeometry(300, 300, 330, 280)
+        self.setGeometry(700, 500, 330, 280)
         self.label = QLabel("Сколько дней вы планируете\n путешествовать?", self)
         self.label.move(30, 20)
         self.label.resize(300, 40)
@@ -434,8 +490,6 @@ def expert_hook(cls, exception, traceback):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    tablecountry = TableWindow()
-    randcountry = RandomWidget()
     main = MainWindow()
     main.show()
     sys.excepthook = expert_hook
